@@ -2,7 +2,6 @@
 # АНОНИМНАЯ ДОСКА СЕКРЕТОВ — main.py
 # ============================================================
 
-import asyncio
 import hashlib
 import hmac
 import json
@@ -19,7 +18,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Header, Query
+from fastapi import FastAPI, HTTPException, Header, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -183,10 +182,17 @@ async def start_handler(message: types.Message):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    bot_task = asyncio.create_task(dp.start_polling(bot, drop_pending_updates=True))
-    logger.info("Бот запущен ✅")
+    # Webhook безопасен при любом кол-ве воркеров Gunicorn.
+    # Polling (start_polling) нельзя использовать с WORKERS > 1:
+    # каждый воркер открывает своё соединение → Telegram возвращает
+    # 409 Conflict, polling перезапускается с drop_pending_updates=True
+    # и дропает /start-команды → пользователи не запускают бота →
+    # bot.send_message() падает с 403 Forbidden → уведомления не приходят.
+    webhook_url = f"{WEBAPP_URL}/webhook"
+    await bot.set_webhook(webhook_url, drop_pending_updates=True)
+    logger.info(f"Webhook установлен: {webhook_url} ✅")
     yield
-    bot_task.cancel()
+    await bot.delete_webhook()
     await bot.session.close()
     logger.info("Бот остановлен")
 
@@ -196,6 +202,19 @@ async def lifespan(app: FastAPI):
 # ╚══════════════════════════════════════════════════════════╝
 
 app = FastAPI(lifespan=lifespan, title="Secrets Board API")
+
+
+# ──────────────────────────────────────────────────────────
+#  WEBHOOK — приём обновлений от Telegram
+# ──────────────────────────────────────────────────────────
+
+@app.post("/webhook")
+async def handle_webhook(request: Request):
+    """Telegram шлёт сюда все обновления (команды, сообщения и т.д.)."""
+    data   = await request.json()
+    update = types.Update(**data)
+    await dp.process_update(update)
+    return {"ok": True}
 
 
 async def auth_user(x_init_data: str = Header(...)) -> int:
@@ -416,7 +435,7 @@ async def vote_post(post_id: int, body: VoteCreate, x_init_data: str = Header(..
                 parse_mode="Markdown",
             )
         except Exception as e:
-            logger.warning(f"Не удалось отправить уведомление о лайке: {e}")
+            logger.error(f"[УВЕДОМЛЕНИЕ] Не удалось отправить лайк пользователю {post_row['author_tg']}: {e}")
 
     return JSONResponse({
         "likes":    row["likes"],
@@ -492,7 +511,7 @@ async def add_comment(post_id: int, body: CommentCreate, x_init_data: str = Head
                 parse_mode="Markdown",
             )
         except Exception as e:
-            logger.warning(f"Не удалось отправить уведомление {author_tg_id}: {e}")
+            logger.error(f"[УВЕДОМЛЕНИЕ] Не удалось отправить комментарий пользователю {author_tg_id}: {e}")
 
     return JSONResponse({"id": comment_id, "content": content})
 
