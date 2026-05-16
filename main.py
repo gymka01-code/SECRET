@@ -222,10 +222,32 @@ app = FastAPI(lifespan=lifespan, title="Secrets Board API")
 @app.post("/webhook")
 async def handle_webhook(request: Request):
     """Telegram шлёт сюда все обновления (команды, сообщения и т.д.)."""
-    data   = await request.json()
-    update = types.Update(**data)
-    await dp.process_update(update)
+    try:
+        data   = await request.json()
+        logger.info(f"[WEBHOOK] Получено обновление update_id={data.get('update_id')}, тип={list(data.keys())}")
+        update = types.Update.model_validate(data)
+        await dp.feed_update(bot, update)
+    except Exception as e:
+        # Всегда возвращаем 200 — иначе Telegram будет ретраить и в итоге
+        # отключит webhook после слишком большого числа ошибок.
+        logger.error(f"[WEBHOOK] Ошибка обработки обновления: {e}", exc_info=True)
     return {"ok": True}
+
+
+@app.get("/webhook/info")
+async def webhook_diagnostic():
+    """Диагностика: текущий статус webhook. Открой в браузере чтобы проверить."""
+    try:
+        info = await bot.get_webhook_info()
+        return {
+            "url":                 info.url,
+            "pending_updates":     info.pending_update_count,
+            "last_error_message":  info.last_error_message,
+            "last_error_date":     info.last_error_date,
+            "max_connections":     info.max_connections,
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 async def auth_user(x_init_data: str = Header(...)) -> int:
