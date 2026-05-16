@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+aiogram
+aiosqlite
+python-dotenv
+aiofiles

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Секреты</title>
+
+  <!-- Telegram Web App SDK — обязательно подключаем первым -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- TailwindCSS через CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Unbounded (заголовки) + Inter (тело) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    // Настраиваем Tailwind с нашими цветами
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'tg-bg':      '#0f0f14',
+            'tg-surface': '#17171f',
+            'tg-card':    '#1e1e2a',
+            'tg-border':  '#2a2a3a',
+            'tg-accent':  '#7b6dff',
+            'tg-accent2': '#ff6b9d',
+            'tg-text':    '#e8e8f0',
+            'tg-muted':   '#6b6b80',
+          },
+          fontFamily: {
+            display: ['Unbounded', 'sans-serif'],
+            body:    ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Глобальные стили */
+    * { -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0f0f14;
+      color: #e8e8f0;
+      overscroll-behavior: none;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Скроллбар — прячем, но оставляем функцию */
+    ::-webkit-scrollbar { display: none; }
+
+    /* Анимация появления карточек */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .card-anim {
+      animation: fadeUp 0.35s ease both;
+    }
+
+    /* Пульсирующий лоадер */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 1; }
+    }
+    .loading-dot {
+      animation: pulse-glow 1.2s ease-in-out infinite;
+    }
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Кнопка голосования — активное состояние */
+    .vote-btn.liked  { color: #7b6dff; }
+    .vote-btn.disliked { color: #ff6b9d; }
+
+    /* FAB кнопка (плавающая) */
+    .fab {
+      background: linear-gradient(135deg, #7b6dff, #ff6b9d);
+      box-shadow: 0 8px 32px rgba(123, 109, 255, 0.4);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .fab:active {
+      transform: scale(0.93);
+      box-shadow: 0 4px 16px rgba(123, 109, 255, 0.3);
+    }
+
+    /* Модалка */
+    .modal-backdrop {
+      background: rgba(10, 10, 20, 0.85);
+      backdrop-filter: blur(8px);
+    }
+    .modal-sheet {
+      border-radius: 24px 24px 0 0;
+      background: #17171f;
+      border-top: 1px solid #2a2a3a;
+    }
+
+    /* Textarea */
+    textarea:focus { outline: none; }
+    textarea::placeholder { color: #6b6b80; }
+
+    /* Акцентная полоска слева на карточке */
+    .secret-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 16px; bottom: 16px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: linear-gradient(to bottom, #7b6dff, #ff6b9d);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .secret-card:hover::before { opacity: 1; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- ════════════════════════════════════════════
+       ШАПКА
+  ════════════════════════════════════════════ -->
+  <header class="sticky top-0 z-10 bg-tg-bg/90 backdrop-blur-xl border-b border-tg-border px-4 pt-3 pb-3">
+    <div class="flex items-center justify-between max-w-lg mx-auto">
+      <div>
+        <h1 class="font-display text-lg font-black text-tg-text tracking-tight leading-none">
+          СЕКРЕТЫ
+        </h1>
+        <p class="text-tg-muted text-xs mt-0.5 font-body">анонимная доска</p>
+      </div>
+      <!-- Индикатор статуса -->
+      <div id="status-badge" class="flex items-center gap-1.5 bg-tg-surface px-3 py-1.5 rounded-full border border-tg-border">
+        <span class="w-2 h-2 rounded-full bg-tg-muted" id="status-dot"></span>
+        <span class="text-xs text-tg-muted font-body" id="status-text">Загрузка...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════
+       ЛЕНТА ПОСТОВ
+  ════════════════════════════════════════════ -->
+  <main class="max-w-lg mx-auto px-4 py-4 pb-28">
+
+    <!-- Состояние загрузки -->
+    <div id="loader" class="flex justify-center items-center gap-2 py-16">
+      <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent"></span>
+      <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent"></span>
+      <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent2"></span>
+    </div>
+
+    <!-- Лента -->
+    <div id="feed" class="hidden space-y-3"></div>
+
+    <!-- Пустое состояние -->
+    <div id="empty-state" class="hidden text-center py-20">
+      <div class="text-6xl mb-4">🤫</div>
+      <p class="text-tg-muted font-body text-sm">Секретов пока нет.<br/>Будь первым!</p>
+    </div>
+
+  </main>
+
+  <!-- ════════════════════════════════════════════
+       FAB — кнопка создания поста
+  ════════════════════════════════════════════ -->
+  <button
+    id="fab-btn"
+    onclick="openNewPostModal()"
+    class="fab fixed bottom-6 right-4 w-14 h-14 rounded-full flex items-center justify-center z-20"
+    style="bottom: calc(1.5rem + env(safe-area-inset-bottom));"
+  >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
+
+
+  <!-- ════════════════════════════════════════════
+       МОДАЛКА: НОВЫЙ СЕКРЕТ
+  ════════════════════════════════════════════ -->
+  <div id="new-post-modal" class="hidden fixed inset-0 z-30 modal-backdrop flex items-end">
+    <div class="modal-sheet w-full p-6 pb-8" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+      <div class="w-10 h-1 rounded-full bg-tg-border mx-auto mb-6"></div>
+      <h2 class="font-display text-base font-black text-tg-text mb-1">Новый секрет</h2>
+      <p class="text-tg-muted text-xs font-body mb-4">Никто не узнает, что это ты 🤫</p>
+      <textarea
+        id="new-post-text"
+        rows="5"
+        maxlength="1000"
+        placeholder="Расскажи что-нибудь тайное..."
+        class="w-full bg-tg-card border border-tg-border rounded-2xl p-4 text-tg-text text-sm font-body resize-none"
+      ></textarea>
+      <div class="flex justify-between items-center mt-2 mb-4">
+        <span class="text-tg-muted text-xs font-body" id="char-count">0 / 1000</span>
+      </div>
+      <div class="flex gap-3">
+        <button
+          onclick="closeNewPostModal()"
+          class="flex-1 py-3 rounded-2xl border border-tg-border text-tg-muted text-sm font-body font-medium active:bg-tg-surface"
+        >Отмена</button>
+        <button
+          id="submit-post-btn"
+          onclick="submitPost()"
+          class="flex-1 py-3 rounded-2xl text-white text-sm font-body font-semibold active:opacity-80"
+          style="background: linear-gradient(135deg, #7b6dff, #ff6b9d);"
+        >Опубликовать</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════
+       МОДАЛКА: ПРОСМОТР ПОСТА + КОММЕНТАРИИ
+  ════════════════════════════════════════════ -->
+  <div id="post-modal" class="hidden fixed inset-0 z-30 modal-backdrop flex items-end">
+    <div class="modal-sheet w-full flex flex-col max-h-[90vh]" style="padding-bottom: env(safe-area-inset-bottom);">
+      <!-- Шапка модалки -->
+      <div class="p-5 pb-0">
+        <div class="w-10 h-1 rounded-full bg-tg-border mx-auto mb-5"></div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-tg-muted text-xs font-body">Аноним</span>
+          <span class="text-tg-muted text-xs font-body" id="modal-time"></span>
+        </div>
+        <p id="modal-content" class="text-tg-text text-sm font-body leading-relaxed mb-4"></p>
+        <!-- Голосование внутри модалки -->
+        <div class="flex gap-2 pb-4 border-b border-tg-border">
+          <button id="modal-like-btn" class="vote-btn flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tg-card border border-tg-border text-sm font-body" onclick="voteInModal(1)">
+            👍 <span id="modal-likes">0</span>
+          </button>
+          <button id="modal-dislike-btn" class="vote-btn flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tg-card border border-tg-border text-sm font-body" onclick="voteInModal(-1)">
+            👎 <span id="modal-dislikes">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Список комментариев -->
+      <div class="flex-1 overflow-y-auto px-5 py-3 space-y-3" id="comments-list">
+        <p class="text-tg-muted text-xs text-center font-body py-4">Загрузка...</p>
+      </div>
+
+      <!-- Форма добавления комментария -->
+      <div class="p-4 border-t border-tg-border flex gap-2">
+        <textarea
+          id="comment-text"
+          rows="1"
+          maxlength="500"
+          placeholder="Напиши комментарий..."
+          class="flex-1 bg-tg-card border border-tg-border rounded-xl px-3 py-2.5 text-tg-text text-sm font-body resize-none"
+          style="min-height: 40px;"
+        ></textarea>
+        <button
+          onclick="submitComment()"
+          class="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center self-end"
+          style="background: linear-gradient(135deg, #7b6dff, #ff6b9d);"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Кнопка закрыть -->
+      <button
+        onclick="closePostModal()"
+        class="w-full py-3 text-tg-muted text-sm font-body border-t border-tg-border"
+      >Закрыть</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════
+       JAVASCRIPT — ВСЯ ЛОГИКА ФРОНТЕНДА
+  ════════════════════════════════════════════ -->
+  <script>
+    // ──────────────────────────────────────────
+    // 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM WEBAPP
+    // ──────────────────────────────────────────
+
+    // Говорим Telegram что приложение готово (убирает лоадер)
+    Telegram.WebApp.ready();
+    // Разрешаем закрытие свайпом вниз
+    Telegram.WebApp.enableClosingConfirmation();
+
+    // initData — это строка с данными пользователя, подписанная Telegram
+    // Мы будем передавать её в каждом запросе к API как "удостоверение личности"
+    const INIT_DATA = Telegram.WebApp.initData;
+
+    // Если initData пустой — значит открыли не из Telegram (например, в браузере)
+    if (!INIT_DATA) {
+      console.warn("initData пуст. Откройте приложение через Telegram.");
+    }
+
+    // ──────────────────────────────────────────
+    // 2. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+    // ──────────────────────────────────────────
+
+    // Делаем запросы к нашему API
+    // Всегда добавляем заголовок X-Init-Data для авторизации
+    async function apiRequest(url, method = 'GET', body = null) {
+      const options = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Init-Data': INIT_DATA,  // наш "пропуск"
+        },
+      };
+      if (body) options.body = JSON.stringify(body);
+
+      const res = await fetch(url, options);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Ошибка ${res.status}`);
+      }
+      return res.json();
+    }
+
+    // Форматируем время: "5 мин назад", "2 ч назад", "3 дня назад"
+    function timeAgo(unixTimestamp) {
+      const diff = Math.floor(Date.now() / 1000) - unixTimestamp;
+      if (diff < 60)    return 'только что';
+      if (diff < 3600)  return `${Math.floor(diff / 60)} мин назад`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+      return `${Math.floor(diff / 86400)} д назад`;
+    }
+
+    // Экранируем HTML чтобы никто не мог вставить вредоносный код
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ──────────────────────────────────────────
+    // 3. ЛЕНТА ПОСТОВ
+    // ──────────────────────────────────────────
+
+    let posts = [];  // глобальный массив постов
+
+    async function loadFeed() {
+      try {
+        posts = await apiRequest('/api/posts');
+
+        document.getElementById('loader').classList.add('hidden');
+
+        if (posts.length === 0) {
+          document.getElementById('empty-state').classList.remove('hidden');
+          return;
+        }
+
+        const feed = document.getElementById('feed');
+        feed.classList.remove('hidden');
+        feed.innerHTML = posts.map((p, i) => renderCard(p, i)).join('');
+
+        // Обновляем статус
+        setStatus(true);
+
+      } catch (e) {
+        console.error(e);
+        document.getElementById('loader').innerHTML =
+          `<p class="text-tg-muted text-sm font-body text-center">Ошибка: ${e.message}</p>`;
+        setStatus(false);
+      }
+    }
+
+    // Рендерим HTML одной карточки
+    function renderCard(p, index) {
+      const myLike    = p.my_vote === 1  ? 'liked'    : '';
+      const myDislike = p.my_vote === -1 ? 'disliked' : '';
+      const delay     = Math.min(index * 60, 400);  // задержка анимации
+
+      return `
+        <div
+          id="card-${p.id}"
+          class="secret-card relative bg-tg-card border border-tg-border rounded-2xl p-4 card-anim"
+          style="animation-delay: ${delay}ms;"
+        >
+          <!-- Шапка карточки -->
+          <div class="flex justify-between items-center mb-3">
+            <span class="text-tg-accent text-xs font-body font-semibold tracking-wide">Аноним</span>
+            <span class="text-tg-muted text-xs font-body">${timeAgo(p.created_at)}</span>
+          </div>
+
+          <!-- Текст секрета -->
+          <p class="text-tg-text text-sm font-body leading-relaxed mb-4 line-clamp-4">
+            ${escapeHtml(p.content)}
+          </p>
+
+          <!-- Кнопки действий -->
+          <div class="flex items-center gap-2">
+            <!-- Лайк -->
+            <button
+              class="vote-btn ${myLike} flex items-center gap-1 px-3 py-1.5 rounded-xl bg-tg-surface border border-tg-border text-xs font-body transition-colors"
+              onclick="vote(${p.id}, 1, this)"
+              id="like-btn-${p.id}"
+            >
+              👍 <span id="likes-${p.id}">${p.likes}</span>
+            </button>
+
+            <!-- Дизлайк -->
+            <button
+              class="vote-btn ${myDislike} flex items-center gap-1 px-3 py-1.5 rounded-xl bg-tg-surface border border-tg-border text-xs font-body transition-colors"
+              onclick="vote(${p.id}, -1, this)"
+              id="dislike-btn-${p.id}"
+            >
+              👎 <span id="dislikes-${p.id}">${p.dislikes}</span>
+            </button>
+
+            <!-- Комментарии -->
+            <button
+              class="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-tg-surface border border-tg-border text-xs font-body text-tg-muted"
+              onclick="openPost(${p.id})"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              ${p.comments_count}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // ──────────────────────────────────────────
+    // 4. ГОЛОСОВАНИЕ
+    // ──────────────────────────────────────────
+
+    async function vote(postId, voteValue, btn) {
+      try {
+        const result = await apiRequest(`/api/posts/${postId}/vote`, 'POST', { vote: voteValue });
+
+        // Обновляем счётчики на карточке
+        document.getElementById(`likes-${postId}`).textContent    = result.likes;
+        document.getElementById(`dislikes-${postId}`).textContent = result.dislikes;
+
+        // Обновляем цвет кнопок
+        const likeBtn    = document.getElementById(`like-btn-${postId}`);
+        const dislikeBtn = document.getElementById(`dislike-btn-${postId}`);
+        likeBtn.className    = likeBtn.className.replace(/ liked| disliked/g, '');
+        dislikeBtn.className = dislikeBtn.className.replace(/ liked| disliked/g, '');
+
+        if (result.my_vote === 1)  likeBtn.classList.add('liked');
+        if (result.my_vote === -1) dislikeBtn.classList.add('disliked');
+
+        // Синхронизируем модалку если открыта
+        if (currentPostId === postId) {
+          document.getElementById('modal-likes').textContent    = result.likes;
+          document.getElementById('modal-dislikes').textContent = result.dislikes;
+          updateModalVoteBtns(result.my_vote);
+        }
+
+        Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // ──────────────────────────────────────────
+    // 5. МОДАЛКА НОВОГО ПОСТА
+    // ──────────────────────────────────────────
+
+    function openNewPostModal() {
+      document.getElementById('new-post-modal').classList.remove('hidden');
+      document.getElementById('new-post-text').value = '';
+      document.getElementById('char-count').textContent = '0 / 1000';
+      setTimeout(() => document.getElementById('new-post-text').focus(), 100);
+      Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+    }
+
+    function closeNewPostModal() {
+      document.getElementById('new-post-modal').classList.add('hidden');
+    }
+
+    // Счётчик символов
+    document.getElementById('new-post-text').addEventListener('input', function() {
+      document.getElementById('char-count').textContent = `${this.value.length} / 1000`;
+    });
+
+    async function submitPost() {
+      const text = document.getElementById('new-post-text').value.trim();
+      if (!text) return;
+
+      const btn = document.getElementById('submit-post-btn');
+      btn.disabled = true;
+      btn.textContent = 'Публикую...';
+
+      try {
+        const newPost = await apiRequest('/api/posts', 'POST', { content: text });
+        closeNewPostModal();
+        await loadFeed();  // перезагружаем ленту
+        Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Опубликовать';
+      }
+    }
+
+    // ──────────────────────────────────────────
+    // 6. МОДАЛКА ПРОСМОТРА ПОСТА
+    // ──────────────────────────────────────────
+
+    let currentPostId = null;
+
+    async function openPost(postId) {
+      currentPostId = postId;
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
+      // Заполняем данные поста
+      document.getElementById('modal-content').textContent = post.content;
+      document.getElementById('modal-time').textContent    = timeAgo(post.created_at);
+      document.getElementById('modal-likes').textContent   = post.likes;
+      document.getElementById('modal-dislikes').textContent = post.dislikes;
+      document.getElementById('comment-text').value = '';
+      updateModalVoteBtns(post.my_vote);
+
+      document.getElementById('post-modal').classList.remove('hidden');
+      Telegram.WebApp.HapticFeedback.impactOccurred('light');
+
+      // Грузим комментарии
+      await loadComments(postId);
+    }
+
+    function closePostModal() {
+      document.getElementById('post-modal').classList.add('hidden');
+      currentPostId = null;
+    }
+
+    function updateModalVoteBtns(myVote) {
+      const lb = document.getElementById('modal-like-btn');
+      const db = document.getElementById('modal-dislike-btn');
+      lb.className = lb.className.replace(/ liked| disliked/g, '');
+      db.className = db.className.replace(/ liked| disliked/g, '');
+      if (myVote === 1)  lb.classList.add('liked');
+      if (myVote === -1) db.classList.add('disliked');
+    }
+
+    async function voteInModal(voteValue) {
+      if (!currentPostId) return;
+      // Находим кнопку на карточке и имитируем клик
+      await vote(currentPostId, voteValue, null);
+    }
+
+    // ──────────────────────────────────────────
+    // 7. КОММЕНТАРИИ
+    // ──────────────────────────────────────────
+
+    async function loadComments(postId) {
+      const list = document.getElementById('comments-list');
+      list.innerHTML = '<p class="text-tg-muted text-xs text-center font-body py-4">Загрузка...</p>';
+
+      try {
+        const comments = await apiRequest(`/api/posts/${postId}/comments`);
+
+        if (comments.length === 0) {
+          list.innerHTML = '<p class="text-tg-muted text-xs text-center font-body py-4">Комментариев пока нет. Будь первым!</p>';
+          return;
+        }
+
+        list.innerHTML = comments.map(c => `
+          <div class="bg-tg-card border border-tg-border rounded-xl p-3">
+            <div class="flex justify-between items-center mb-1.5">
+              <span class="text-tg-accent text-xs font-body font-semibold">Аноним</span>
+              <span class="text-tg-muted text-xs font-body">${timeAgo(c.created_at)}</span>
+            </div>
+            <p class="text-tg-text text-sm font-body leading-relaxed">${escapeHtml(c.content)}</p>
+          </div>
+        `).join('');
+      } catch (e) {
+        list.innerHTML = `<p class="text-red-400 text-xs text-center font-body py-4">Ошибка загрузки</p>`;
+      }
+    }
+
+    async function submitComment() {
+      if (!currentPostId) return;
+      const text = document.getElementById('comment-text').value.trim();
+      if (!text) return;
+
+      try {
+        await apiRequest(`/api/posts/${currentPostId}/comments`, 'POST', { content: text });
+        document.getElementById('comment-text').value = '';
+        await loadComments(currentPostId);
+
+        // Обновляем счётчик на карточке
+        const post = posts.find(p => p.id === currentPostId);
+        if (post) post.comments_count++;
+
+        Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    }
+
+    // ──────────────────────────────────────────
+    // 8. ИНДИКАТОР СТАТУСА
+    // ──────────────────────────────────────────
+
+    function setStatus(online) {
+      const dot  = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+      if (online) {
+        dot.className  = 'w-2 h-2 rounded-full bg-green-400';
+        text.textContent = 'В эфире';
+        text.className = 'text-xs text-green-400 font-body';
+      } else {
+        dot.className  = 'w-2 h-2 rounded-full bg-red-400';
+        text.textContent = 'Ошибка';
+        text.className = 'text-xs text-red-400 font-body';
+      }
+    }
+
+    // ──────────────────────────────────────────
+    // 9. ЗАКРЫТИЕ МОДАЛОК ПО КЛИКУ НА ФОНЕ
+    // ──────────────────────────────────────────
+
+    document.getElementById('new-post-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeNewPostModal();
+    });
+
+    document.getElementById('post-modal').addEventListener('click', function(e) {
+      if (e.target === this) closePostModal();
+    });
+
+    // ──────────────────────────────────────────
+    // 10. СТАРТ ПРИЛОЖЕНИЯ
+    // ──────────────────────────────────────────
+
+    loadFeed();
+  </script>
+
+</body>
+</html>
