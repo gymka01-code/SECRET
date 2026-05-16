@@ -90,6 +90,8 @@
 
     textarea:focus { outline: none; }
     textarea::placeholder { color: #6b6b80; }
+    /* Предотвращает автозум iOS Safari при фокусе на textarea (нужен font-size >= 16px) */
+    textarea { font-size: 16px; }
 
     /* ── Основная карточка секрета ───────────── */
     .main-card {
