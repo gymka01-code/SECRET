@@ -5,16 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Секреты</title>
 
-  <!-- Telegram Web App SDK — обязательно подключаем первым -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- TailwindCSS через CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Unbounded (заголовки) + Inter (тело) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <script>
-    // Настраиваем Tailwind с нашими цветами
     tailwind.config = {
       theme: {
         extend: {
@@ -38,99 +34,167 @@
   </script>
 
   <style>
-    /* Глобальные стили */
-    * { -webkit-tap-highlight-color: transparent; }
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
     body {
       font-family: 'Inter', sans-serif;
       background: #0f0f14;
       color: #e8e8f0;
       overscroll-behavior: none;
-      padding-bottom: env(safe-area-inset-bottom);
+      padding-bottom: calc(64px + env(safe-area-inset-bottom));
     }
 
-    /* Скроллбар — прячем, но оставляем функцию */
     ::-webkit-scrollbar { display: none; }
 
-    /* Анимация появления карточек */
+    /* ── Анимации ────────────────────────────── */
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
+      from { opacity: 0; transform: translateY(20px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .card-anim {
-      animation: fadeUp 0.35s ease both;
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(60px); }
+      to   { opacity: 1; transform: translateX(0); }
     }
-
-    /* Пульсирующий лоадер */
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-60px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
     @keyframes pulse-glow {
       0%, 100% { opacity: 0.4; }
       50%       { opacity: 1; }
     }
-    .loading-dot {
-      animation: pulse-glow 1.2s ease-in-out infinite;
-    }
+
+    .anim-up    { animation: fadeUp       0.3s ease both; }
+    .anim-right { animation: slideInRight 0.28s ease both; }
+    .anim-left  { animation: slideInLeft  0.28s ease both; }
+
+    .loading-dot { animation: pulse-glow 1.2s ease-in-out infinite; }
     .loading-dot:nth-child(2) { animation-delay: 0.2s; }
     .loading-dot:nth-child(3) { animation-delay: 0.4s; }
 
-    /* Кнопка голосования — активное состояние */
-    .vote-btn.liked  { color: #7b6dff; }
-    .vote-btn.disliked { color: #ff6b9d; }
+    /* ── Голосование ─────────────────────────── */
+    .vote-btn.liked    { color: #7b6dff; border-color: #7b6dff44; background: #7b6dff15; }
+    .vote-btn.disliked { color: #ff6b9d; border-color: #ff6b9d44; background: #ff6b9d15; }
 
-    /* FAB кнопка (плавающая) */
+    /* ── FAB ─────────────────────────────────── */
     .fab {
       background: linear-gradient(135deg, #7b6dff, #ff6b9d);
-      box-shadow: 0 8px 32px rgba(123, 109, 255, 0.4);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 8px 32px rgba(123,109,255,.45);
+      transition: transform .15s ease, box-shadow .15s ease;
     }
-    .fab:active {
-      transform: scale(0.93);
-      box-shadow: 0 4px 16px rgba(123, 109, 255, 0.3);
-    }
+    .fab:active { transform: scale(.92); box-shadow: 0 4px 16px rgba(123,109,255,.3); }
 
-    /* Модалка */
-    .modal-backdrop {
-      background: rgba(10, 10, 20, 0.85);
-      backdrop-filter: blur(8px);
-    }
-    .modal-sheet {
-      border-radius: 24px 24px 0 0;
-      background: #17171f;
-      border-top: 1px solid #2a2a3a;
-    }
+    /* ── Модалки ─────────────────────────────── */
+    .modal-backdrop { background: rgba(10,10,20,.88); backdrop-filter: blur(10px); }
+    .modal-sheet    { border-radius: 24px 24px 0 0; background: #17171f; border-top: 1px solid #2a2a3a; }
 
-    /* Textarea */
     textarea:focus { outline: none; }
     textarea::placeholder { color: #6b6b80; }
 
-    /* Акцентная полоска слева на карточке */
-    .secret-card::before {
+    /* ── Основная карточка секрета ───────────── */
+    .main-card {
+      background: #1e1e2a;
+      border: 1px solid #2a2a3a;
+      border-radius: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .main-card::before {
       content: '';
       position: absolute;
-      left: 0; top: 16px; bottom: 16px;
+      inset: 0;
+      background: linear-gradient(135deg, #7b6dff08, #ff6b9d08);
+      pointer-events: none;
+    }
+    .main-card-accent {
+      height: 3px;
+      background: linear-gradient(90deg, #7b6dff, #ff6b9d);
+      border-radius: 3px 3px 0 0;
+    }
+
+    /* ── Карточка профиля (маленькая) ─────────── */
+    .profile-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 14px; bottom: 14px;
       width: 3px;
       border-radius: 0 3px 3px 0;
       background: linear-gradient(to bottom, #7b6dff, #ff6b9d);
-      opacity: 0;
-      transition: opacity 0.2s;
     }
-    .secret-card:hover::before { opacity: 1; }
+
+    /* ── Боттом-навигация ────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: calc(60px + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      background: #13131b;
+      border-top: 1px solid #2a2a3a;
+      backdrop-filter: blur(16px);
+      z-index: 20;
+    }
+    .nav-btn { transition: color .15s ease; }
+    .nav-btn.active { color: #7b6dff; }
+    .nav-btn.active svg { stroke: #7b6dff; }
+    .nav-btn:not(.active) { color: #6b6b80; }
+    .nav-btn:not(.active) svg { stroke: #6b6b80; }
+
+    /* ── Прогресс-бар ────────────────────────── */
+    .progress-bar-inner {
+      height: 3px;
+      background: linear-gradient(90deg, #7b6dff, #ff6b9d);
+      border-radius: 3px;
+      transition: width .3s ease;
+    }
+
+    /* ── Статистика профиля ──────────────────── */
+    .stat-pill {
+      background: #1e1e2a;
+      border: 1px solid #2a2a3a;
+      border-radius: 16px;
+      padding: 10px 16px;
+      text-align: center;
+      flex: 1;
+    }
+
+    /* ── Кнопки навигации по карточкам ──────── */
+    .nav-card-btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid #2a2a3a;
+      background: #1e1e2a;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #e8e8f0;
+      transition: background .15s, transform .1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .nav-card-btn:active { transform: scale(.96); background: #252535; }
+    .nav-card-btn.primary {
+      background: linear-gradient(135deg, #7b6dff, #ff6b9d);
+      border-color: transparent;
+      box-shadow: 0 4px 20px rgba(123,109,255,.3);
+    }
+    .nav-card-btn:disabled { opacity: .35; pointer-events: none; }
   </style>
 </head>
 
 <body class="min-h-screen">
 
-  <!-- ════════════════════════════════════════════
+  <!-- ════════════════════════════════════════
        ШАПКА
-  ════════════════════════════════════════════ -->
+  ════════════════════════════════════════ -->
   <header class="sticky top-0 z-10 bg-tg-bg/90 backdrop-blur-xl border-b border-tg-border px-4 pt-3 pb-3">
     <div class="flex items-center justify-between max-w-lg mx-auto">
       <div>
-        <h1 class="font-display text-lg font-black text-tg-text tracking-tight leading-none">
-          СЕКРЕТЫ
-        </h1>
+        <h1 class="font-display text-lg font-black text-tg-text tracking-tight leading-none">СЕКРЕТЫ</h1>
         <p class="text-tg-muted text-xs mt-0.5 font-body">анонимная доска</p>
       </div>
-      <!-- Индикатор статуса -->
       <div id="status-badge" class="flex items-center gap-1.5 bg-tg-surface px-3 py-1.5 rounded-full border border-tg-border">
         <span class="w-2 h-2 rounded-full bg-tg-muted" id="status-dot"></span>
         <span class="text-xs text-tg-muted font-body" id="status-text">Загрузка...</span>
@@ -138,37 +202,156 @@
     </div>
   </header>
 
-  <!-- ════════════════════════════════════════════
-       ЛЕНТА ПОСТОВ
-  ════════════════════════════════════════════ -->
-  <main class="max-w-lg mx-auto px-4 py-4 pb-28">
 
-    <!-- Состояние загрузки -->
-    <div id="loader" class="flex justify-center items-center gap-2 py-16">
+  <!-- ════════════════════════════════════════
+       ВКЛАДКА: ЛЕНТА (карточки)
+  ════════════════════════════════════════ -->
+  <div id="tab-feed" class="max-w-lg mx-auto px-4 py-4">
+
+    <!-- Лоадер -->
+    <div id="feed-loader" class="flex justify-center items-center gap-2 py-20">
       <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent"></span>
       <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent"></span>
       <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent2"></span>
     </div>
 
-    <!-- Лента -->
-    <div id="feed" class="hidden space-y-3"></div>
+    <!-- Карточка -->
+    <div id="card-area" class="hidden">
+      <!-- Счётчик и прогресс -->
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-tg-muted text-xs font-body" id="card-counter">Секрет 1</span>
+        <span class="text-tg-muted text-xs font-body" id="card-hint">листай или свайпай →</span>
+      </div>
+      <div class="bg-tg-border rounded-full h-0.5 mb-4 overflow-hidden">
+        <div class="progress-bar-inner" id="progress-bar" style="width:0%"></div>
+      </div>
+
+      <!-- Основная карточка -->
+      <div class="main-card mb-4" id="main-card">
+        <div class="main-card-accent"></div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-tg-accent text-xs font-body font-semibold tracking-wide">Аноним 🤫</span>
+            <span class="text-tg-muted text-xs font-body" id="card-time"></span>
+          </div>
+          <div id="card-content" class="text-tg-text text-sm font-body leading-relaxed mb-5 max-h-96 overflow-y-auto"></div>
+
+          <!-- Голосование -->
+          <div class="flex items-center gap-2 mb-4">
+            <button id="card-like-btn" class="vote-btn flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tg-surface border border-tg-border text-sm font-body transition-all" onclick="cardVote(1)">
+              👍 <span id="card-likes">0</span>
+            </button>
+            <button id="card-dislike-btn" class="vote-btn flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tg-surface border border-tg-border text-sm font-body transition-all" onclick="cardVote(-1)">
+              👎 <span id="card-dislikes">0</span>
+            </button>
+            <button class="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl bg-tg-surface border border-tg-border text-xs font-body text-tg-muted" onclick="openComments()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span id="card-comments">0</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Навигация -->
+      <div class="flex gap-3">
+        <button class="nav-card-btn" id="btn-prev" onclick="prevCard()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Назад
+        </button>
+        <button class="nav-card-btn primary" id="btn-next" onclick="nextCard()">
+          Следующий
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Конец ленты -->
+    <div id="feed-end" class="hidden text-center py-20">
+      <div class="text-5xl mb-4">🌙</div>
+      <p class="text-tg-muted font-body text-sm">Ты прочитал все секреты.<br/>Загляни позже!</p>
+      <button onclick="resetFeed()" class="mt-6 px-6 py-3 rounded-2xl border border-tg-border text-tg-muted text-sm font-body">
+        Начать сначала
+      </button>
+    </div>
 
     <!-- Пустое состояние -->
-    <div id="empty-state" class="hidden text-center py-20">
+    <div id="feed-empty" class="hidden text-center py-20">
       <div class="text-6xl mb-4">🤫</div>
       <p class="text-tg-muted font-body text-sm">Секретов пока нет.<br/>Будь первым!</p>
     </div>
 
-  </main>
+  </div>
 
-  <!-- ════════════════════════════════════════════
-       FAB — кнопка создания поста
-  ════════════════════════════════════════════ -->
+
+  <!-- ════════════════════════════════════════
+       ВКЛАДКА: ПРОФИЛЬ
+  ════════════════════════════════════════ -->
+  <div id="tab-profile" class="hidden max-w-lg mx-auto px-4 py-4">
+
+    <!-- Лоадер профиля -->
+    <div id="profile-loader" class="flex justify-center items-center gap-2 py-20">
+      <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent"></span>
+      <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent"></span>
+      <span class="loading-dot w-2.5 h-2.5 rounded-full bg-tg-accent2"></span>
+    </div>
+
+    <!-- Содержимое профиля -->
+    <div id="profile-content" class="hidden">
+      <!-- Шапка профиля -->
+      <div class="mb-5 anim-up">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl" style="background: linear-gradient(135deg,#7b6dff22,#ff6b9d22); border: 1px solid #2a2a3a;">
+            🎭
+          </div>
+          <div>
+            <p class="font-display text-base font-black text-tg-text">Мой профиль</p>
+            <p class="text-tg-muted text-xs font-body mt-0.5">анонимный автор</p>
+          </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="flex gap-2">
+          <div class="stat-pill">
+            <p class="font-display text-lg font-black text-tg-text" id="stat-posts">0</p>
+            <p class="text-tg-muted text-xs font-body mt-0.5">секретов</p>
+          </div>
+          <div class="stat-pill">
+            <p class="font-display text-lg font-black" style="color:#7b6dff" id="stat-likes">0</p>
+            <p class="text-tg-muted text-xs font-body mt-0.5">👍 лайков</p>
+          </div>
+          <div class="stat-pill">
+            <p class="font-display text-lg font-black" style="color:#ff6b9d" id="stat-dislikes">0</p>
+            <p class="text-tg-muted text-xs font-body mt-0.5">👎 дизлайков</p>
+          </div>
+          <div class="stat-pill">
+            <p class="font-display text-lg font-black text-tg-text" id="stat-comments">0</p>
+            <p class="text-tg-muted text-xs font-body mt-0.5">💬 комментов</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Список постов -->
+      <p class="text-tg-muted text-xs font-body font-semibold tracking-wider uppercase mb-3">Мои секреты</p>
+      <div id="profile-posts" class="space-y-3"></div>
+
+      <!-- Нет постов -->
+      <div id="profile-empty" class="hidden text-center py-12">
+        <div class="text-5xl mb-3">✍️</div>
+        <p class="text-tg-muted font-body text-sm">У тебя ещё нет секретов.<br/>Поделись первым!</p>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       FAB — НОВЫЙ ПОСТ
+  ════════════════════════════════════════ -->
   <button
     id="fab-btn"
     onclick="openNewPostModal()"
-    class="fab fixed bottom-6 right-4 w-14 h-14 rounded-full flex items-center justify-center z-20"
-    style="bottom: calc(1.5rem + env(safe-area-inset-bottom));"
+    class="fab fixed right-4 w-14 h-14 rounded-full flex items-center justify-center z-20"
+    style="bottom: calc(76px + env(safe-area-inset-bottom));"
   >
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
       <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -176,138 +359,122 @@
   </button>
 
 
-  <!-- ════════════════════════════════════════════
+  <!-- ════════════════════════════════════════
+       БОТТОМ-НАВИГАЦИЯ
+  ════════════════════════════════════════ -->
+  <nav class="bottom-nav flex items-center justify-around px-4">
+    <button class="nav-btn active flex flex-col items-center gap-1 py-2 px-5" id="nav-feed" onclick="showTab('feed')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+      </svg>
+      <span class="text-xs font-body">Лента</span>
+    </button>
+    <button class="nav-btn flex flex-col items-center gap-1 py-2 px-5" id="nav-profile" onclick="showTab('profile')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span class="text-xs font-body">Профиль</span>
+    </button>
+  </nav>
+
+
+  <!-- ════════════════════════════════════════
        МОДАЛКА: НОВЫЙ СЕКРЕТ
-  ════════════════════════════════════════════ -->
+  ════════════════════════════════════════ -->
   <div id="new-post-modal" class="hidden fixed inset-0 z-30 modal-backdrop flex items-end">
-    <div class="modal-sheet w-full p-6 pb-8" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+    <div class="modal-sheet w-full p-6" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));">
       <div class="w-10 h-1 rounded-full bg-tg-border mx-auto mb-6"></div>
       <h2 class="font-display text-base font-black text-tg-text mb-1">Новый секрет</h2>
       <p class="text-tg-muted text-xs font-body mb-4">Никто не узнает, что это ты 🤫</p>
       <textarea
         id="new-post-text"
-        rows="5"
-        maxlength="1000"
+        rows="6"
+        maxlength="10000"
         placeholder="Расскажи что-нибудь тайное..."
         class="w-full bg-tg-card border border-tg-border rounded-2xl p-4 text-tg-text text-sm font-body resize-none"
       ></textarea>
       <div class="flex justify-between items-center mt-2 mb-4">
-        <span class="text-tg-muted text-xs font-body" id="char-count">0 / 1000</span>
+        <span class="text-tg-muted text-xs font-body" id="char-count">0 / 10 000</span>
+        <span class="text-tg-muted text-xs font-body" id="char-hint"></span>
       </div>
       <div class="flex gap-3">
-        <button
-          onclick="closeNewPostModal()"
-          class="flex-1 py-3 rounded-2xl border border-tg-border text-tg-muted text-sm font-body font-medium active:bg-tg-surface"
-        >Отмена</button>
-        <button
-          id="submit-post-btn"
-          onclick="submitPost()"
-          class="flex-1 py-3 rounded-2xl text-white text-sm font-body font-semibold active:opacity-80"
-          style="background: linear-gradient(135deg, #7b6dff, #ff6b9d);"
-        >Опубликовать</button>
+        <button onclick="closeNewPostModal()" class="flex-1 py-3 rounded-2xl border border-tg-border text-tg-muted text-sm font-body font-medium active:bg-tg-surface">
+          Отмена
+        </button>
+        <button id="submit-post-btn" onclick="submitPost()" class="flex-1 py-3 rounded-2xl text-white text-sm font-body font-semibold active:opacity-80" style="background: linear-gradient(135deg,#7b6dff,#ff6b9d);">
+          Опубликовать
+        </button>
       </div>
     </div>
   </div>
 
 
-  <!-- ════════════════════════════════════════════
-       МОДАЛКА: ПРОСМОТР ПОСТА + КОММЕНТАРИИ
-  ════════════════════════════════════════════ -->
-  <div id="post-modal" class="hidden fixed inset-0 z-30 modal-backdrop flex items-end">
-    <div class="modal-sheet w-full flex flex-col max-h-[90vh]" style="padding-bottom: env(safe-area-inset-bottom);">
-      <!-- Шапка модалки -->
+  <!-- ════════════════════════════════════════
+       МОДАЛКА: КОММЕНТАРИИ
+  ════════════════════════════════════════ -->
+  <div id="comments-modal" class="hidden fixed inset-0 z-30 modal-backdrop flex items-end">
+    <div class="modal-sheet w-full flex flex-col" style="max-height: 85vh; padding-bottom: env(safe-area-inset-bottom);">
       <div class="p-5 pb-0">
         <div class="w-10 h-1 rounded-full bg-tg-border mx-auto mb-5"></div>
         <div class="flex items-center justify-between mb-3">
-          <span class="text-tg-muted text-xs font-body">Аноним</span>
-          <span class="text-tg-muted text-xs font-body" id="modal-time"></span>
+          <span class="font-body text-sm font-semibold text-tg-text">Комментарии</span>
+          <button onclick="closeCommentsModal()" class="text-tg-muted text-sm font-body">Закрыть</button>
         </div>
-        <p id="modal-content" class="text-tg-text text-sm font-body leading-relaxed mb-4"></p>
-        <!-- Голосование внутри модалки -->
-        <div class="flex gap-2 pb-4 border-b border-tg-border">
-          <button id="modal-like-btn" class="vote-btn flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tg-card border border-tg-border text-sm font-body" onclick="voteInModal(1)">
-            👍 <span id="modal-likes">0</span>
-          </button>
-          <button id="modal-dislike-btn" class="vote-btn flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tg-card border border-tg-border text-sm font-body" onclick="voteInModal(-1)">
-            👎 <span id="modal-dislikes">0</span>
-          </button>
+        <!-- Мини-превью поста -->
+        <div class="bg-tg-card rounded-xl p-3 mb-3 border border-tg-border">
+          <p id="modal-post-preview" class="text-tg-text text-xs font-body leading-relaxed line-clamp-3"></p>
         </div>
       </div>
 
-      <!-- Список комментариев -->
-      <div class="flex-1 overflow-y-auto px-5 py-3 space-y-3" id="comments-list">
+      <div class="flex-1 overflow-y-auto px-5 py-2 space-y-2" id="comments-list">
         <p class="text-tg-muted text-xs text-center font-body py-4">Загрузка...</p>
       </div>
 
-      <!-- Форма добавления комментария -->
       <div class="p-4 border-t border-tg-border flex gap-2">
         <textarea
           id="comment-text"
           rows="1"
-          maxlength="500"
+          maxlength="2000"
           placeholder="Напиши комментарий..."
           class="flex-1 bg-tg-card border border-tg-border rounded-xl px-3 py-2.5 text-tg-text text-sm font-body resize-none"
           style="min-height: 40px;"
         ></textarea>
-        <button
-          onclick="submitComment()"
-          class="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center self-end"
-          style="background: linear-gradient(135deg, #7b6dff, #ff6b9d);"
-        >
+        <button onclick="submitComment()" class="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center self-end" style="background: linear-gradient(135deg,#7b6dff,#ff6b9d);">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
         </button>
       </div>
-
-      <!-- Кнопка закрыть -->
-      <button
-        onclick="closePostModal()"
-        class="w-full py-3 text-tg-muted text-sm font-body border-t border-tg-border"
-      >Закрыть</button>
     </div>
   </div>
 
 
-  <!-- ════════════════════════════════════════════
-       JAVASCRIPT — ВСЯ ЛОГИКА ФРОНТЕНДА
-  ════════════════════════════════════════════ -->
+  <!-- ════════════════════════════════════════
+       JAVASCRIPT
+  ════════════════════════════════════════ -->
   <script>
     // ──────────────────────────────────────────
-    // 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM WEBAPP
+    // 1. ИНИЦИАЛИЗАЦИЯ
     // ──────────────────────────────────────────
-
-    // Говорим Telegram что приложение готово (убирает лоадер)
     Telegram.WebApp.ready();
-    // Разрешаем закрытие свайпом вниз
     Telegram.WebApp.enableClosingConfirmation();
-
-    // initData — это строка с данными пользователя, подписанная Telegram
-    // Мы будем передавать её в каждом запросе к API как "удостоверение личности"
     const INIT_DATA = Telegram.WebApp.initData;
 
-    // Если initData пустой — значит открыли не из Telegram (например, в браузере)
-    if (!INIT_DATA) {
-      console.warn("initData пуст. Откройте приложение через Telegram.");
-    }
+    if (!INIT_DATA) console.warn("initData пуст. Откройте через Telegram.");
 
     // ──────────────────────────────────────────
-    // 2. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+    // 2. УТИЛИТЫ
     // ──────────────────────────────────────────
 
-    // Делаем запросы к нашему API
-    // Всегда добавляем заголовок X-Init-Data для авторизации
     async function apiRequest(url, method = 'GET', body = null) {
-      const options = {
+      const opts = {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Init-Data': INIT_DATA,  // наш "пропуск"
-        },
+        headers: { 'Content-Type': 'application/json', 'X-Init-Data': INIT_DATA },
       };
-      if (body) options.body = JSON.stringify(body);
-
-      const res = await fetch(url, options);
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(url, opts);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || `Ошибка ${res.status}`);
@@ -315,139 +482,210 @@
       return res.json();
     }
 
-    // Форматируем время: "5 мин назад", "2 ч назад", "3 дня назад"
-    function timeAgo(unixTimestamp) {
-      const diff = Math.floor(Date.now() / 1000) - unixTimestamp;
-      if (diff < 60)    return 'только что';
-      if (diff < 3600)  return `${Math.floor(diff / 60)} мин назад`;
-      if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
-      return `${Math.floor(diff / 86400)} д назад`;
+    function timeAgo(unix) {
+      const d = Math.floor(Date.now() / 1000) - unix;
+      if (d < 60)    return 'только что';
+      if (d < 3600)  return `${Math.floor(d / 60)} мин назад`;
+      if (d < 86400) return `${Math.floor(d / 3600)} ч назад`;
+      return `${Math.floor(d / 86400)} д назад`;
     }
 
-    // Экранируем HTML чтобы никто не мог вставить вредоносный код
-    function escapeHtml(text) {
-      return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    function escapeHtml(t) {
+      return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function setStatus(online) {
+      const dot  = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+      dot.className  = `w-2 h-2 rounded-full ${online ? 'bg-green-400' : 'bg-red-400'}`;
+      text.textContent = online ? 'В эфире' : 'Ошибка';
+      text.className = `text-xs font-body ${online ? 'text-green-400' : 'text-red-400'}`;
     }
 
     // ──────────────────────────────────────────
-    // 3. ЛЕНТА ПОСТОВ
+    // 3. НАВИГАЦИЯ ПО ВКЛАДКАМ
     // ──────────────────────────────────────────
 
-    let posts = [];  // глобальный массив постов
+    let currentTab = 'feed';
 
-    async function loadFeed() {
+    function showTab(tab) {
+      currentTab = tab;
+
+      document.getElementById('tab-feed').classList.toggle('hidden',    tab !== 'feed');
+      document.getElementById('tab-profile').classList.toggle('hidden', tab !== 'profile');
+
+      document.getElementById('nav-feed').classList.toggle('active',    tab === 'feed');
+      document.getElementById('nav-profile').classList.toggle('active', tab === 'profile');
+
+      if (tab === 'profile') loadProfile();
+    }
+
+    // ──────────────────────────────────────────
+    // 4. КАРТОЧНЫЙ РЕЖИМ ЛЕНТЫ
+    // ──────────────────────────────────────────
+
+    let cardBuffer    = [];    // буфер постов
+    let cardIndex     = 0;     // текущий индекс
+    let oldestId      = null;  // для пагинации (cursor)
+    let isLoadingMore = false;
+    let hasMore       = true;
+    let animDir       = 'right'; // направление анимации
+
+    async function initFeed() {
+      document.getElementById('feed-loader').classList.remove('hidden');
+      document.getElementById('card-area').classList.add('hidden');
+      document.getElementById('feed-end').classList.add('hidden');
+      document.getElementById('feed-empty').classList.add('hidden');
+
       try {
-        posts = await apiRequest('/api/posts');
+        await fetchMorePosts();
+        document.getElementById('feed-loader').classList.add('hidden');
 
-        document.getElementById('loader').classList.add('hidden');
-
-        if (posts.length === 0) {
-          document.getElementById('empty-state').classList.remove('hidden');
+        if (cardBuffer.length === 0) {
+          document.getElementById('feed-empty').classList.remove('hidden');
           return;
         }
 
-        const feed = document.getElementById('feed');
-        feed.classList.remove('hidden');
-        feed.innerHTML = posts.map((p, i) => renderCard(p, i)).join('');
-
-        // Обновляем статус
+        document.getElementById('card-area').classList.remove('hidden');
+        renderCurrentCard();
         setStatus(true);
-
       } catch (e) {
-        console.error(e);
-        document.getElementById('loader').innerHTML =
-          `<p class="text-tg-muted text-sm font-body text-center">Ошибка: ${e.message}</p>`;
+        document.getElementById('feed-loader').innerHTML =
+          `<p class="text-tg-muted text-sm font-body text-center">Ошибка: ${escapeHtml(e.message)}</p>`;
         setStatus(false);
       }
     }
 
-    // Рендерим HTML одной карточки
-    function renderCard(p, index) {
-      const myLike    = p.my_vote === 1  ? 'liked'    : '';
-      const myDislike = p.my_vote === -1 ? 'disliked' : '';
-      const delay     = Math.min(index * 60, 400);  // задержка анимации
+    async function fetchMorePosts() {
+      if (isLoadingMore || !hasMore) return;
+      isLoadingMore = true;
 
-      return `
-        <div
-          id="card-${p.id}"
-          class="secret-card relative bg-tg-card border border-tg-border rounded-2xl p-4 card-anim"
-          style="animation-delay: ${delay}ms;"
-        >
-          <!-- Шапка карточки -->
-          <div class="flex justify-between items-center mb-3">
-            <span class="text-tg-accent text-xs font-body font-semibold tracking-wide">Аноним</span>
-            <span class="text-tg-muted text-xs font-body">${timeAgo(p.created_at)}</span>
-          </div>
-
-          <!-- Текст секрета -->
-          <p class="text-tg-text text-sm font-body leading-relaxed mb-4 line-clamp-4">
-            ${escapeHtml(p.content)}
-          </p>
-
-          <!-- Кнопки действий -->
-          <div class="flex items-center gap-2">
-            <!-- Лайк -->
-            <button
-              class="vote-btn ${myLike} flex items-center gap-1 px-3 py-1.5 rounded-xl bg-tg-surface border border-tg-border text-xs font-body transition-colors"
-              onclick="vote(${p.id}, 1, this)"
-              id="like-btn-${p.id}"
-            >
-              👍 <span id="likes-${p.id}">${p.likes}</span>
-            </button>
-
-            <!-- Дизлайк -->
-            <button
-              class="vote-btn ${myDislike} flex items-center gap-1 px-3 py-1.5 rounded-xl bg-tg-surface border border-tg-border text-xs font-body transition-colors"
-              onclick="vote(${p.id}, -1, this)"
-              id="dislike-btn-${p.id}"
-            >
-              👎 <span id="dislikes-${p.id}">${p.dislikes}</span>
-            </button>
-
-            <!-- Комментарии -->
-            <button
-              class="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-tg-surface border border-tg-border text-xs font-body text-tg-muted"
-              onclick="openPost(${p.id})"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              ${p.comments_count}
-            </button>
-          </div>
-        </div>
-      `;
+      const params = oldestId ? `?before_id=${oldestId}&limit=20` : '?limit=20';
+      try {
+        const batch = await apiRequest(`/api/posts${params}`);
+        if (batch.length < 20) hasMore = false;
+        if (batch.length > 0) {
+          oldestId = batch[batch.length - 1].id;
+          cardBuffer.push(...batch);
+        }
+      } finally {
+        isLoadingMore = false;
+      }
     }
 
+    function renderCurrentCard(anim = null) {
+      const post = cardBuffer[cardIndex];
+      if (!post) {
+        document.getElementById('card-area').classList.add('hidden');
+        document.getElementById('feed-end').classList.remove('hidden');
+        return;
+      }
+
+      // Прогресс (только если знаем приблизительный размер)
+      const total = hasMore ? cardBuffer.length + 5 : cardBuffer.length;
+      const pct   = Math.round(((cardIndex + 1) / total) * 100);
+      document.getElementById('progress-bar').style.width  = `${pct}%`;
+      document.getElementById('card-counter').textContent  = `Секрет ${cardIndex + 1}`;
+      document.getElementById('card-hint').textContent     = cardIndex === 0 ? 'листай или свайпай →' : '';
+
+      // Данные
+      document.getElementById('card-time').textContent     = timeAgo(post.created_at);
+      document.getElementById('card-content').textContent  = post.content;
+      document.getElementById('card-likes').textContent    = post.likes;
+      document.getElementById('card-dislikes').textContent = post.dislikes;
+      document.getElementById('card-comments').textContent = post.comments_count;
+
+      // Голоса
+      const lb = document.getElementById('card-like-btn');
+      const db = document.getElementById('card-dislike-btn');
+      lb.className = lb.className.replace(/ liked| disliked/g, '');
+      db.className = db.className.replace(/ liked| disliked/g, '');
+      if (post.my_vote ===  1) lb.classList.add('liked');
+      if (post.my_vote === -1) db.classList.add('disliked');
+
+      // Кнопки навигации
+      document.getElementById('btn-prev').disabled = (cardIndex === 0);
+
+      // Анимация
+      const card = document.getElementById('main-card');
+      card.classList.remove('anim-right', 'anim-left', 'anim-up');
+      void card.offsetWidth; // reflow
+      if (anim) card.classList.add(anim);
+
+      // Предзагрузка: когда осталось 5 постов
+      if (cardBuffer.length - cardIndex <= 5 && hasMore) {
+        fetchMorePosts();
+      }
+    }
+
+    function nextCard() {
+      if (cardIndex >= cardBuffer.length - 1 && !hasMore) {
+        document.getElementById('card-area').classList.add('hidden');
+        document.getElementById('feed-end').classList.remove('hidden');
+        return;
+      }
+      if (cardIndex >= cardBuffer.length - 1) return; // идёт загрузка
+
+      cardIndex++;
+      renderCurrentCard('anim-right');
+      Telegram.WebApp.HapticFeedback.impactOccurred('light');
+    }
+
+    function prevCard() {
+      if (cardIndex <= 0) return;
+      cardIndex--;
+      renderCurrentCard('anim-left');
+      Telegram.WebApp.HapticFeedback.impactOccurred('light');
+    }
+
+    function resetFeed() {
+      cardBuffer    = [];
+      cardIndex     = 0;
+      oldestId      = null;
+      isLoadingMore = false;
+      hasMore       = true;
+      initFeed();
+    }
+
+    // ── Свайп жесты ──────────────────────────────────────────
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.getElementById('main-card').addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.getElementById('main-card').addEventListener('touchend', e => {
+      const dx = touchStartX - e.changedTouches[0].clientX;
+      const dy = Math.abs(touchStartY - e.changedTouches[0].clientY);
+      if (dy > 40) return;             // вертикальный скролл — игнорируем
+      if (dx >  55) nextCard();
+      if (dx < -55) prevCard();
+    }, { passive: true });
+
     // ──────────────────────────────────────────
-    // 4. ГОЛОСОВАНИЕ
+    // 5. ГОЛОСОВАНИЕ НА КАРТОЧКЕ
     // ──────────────────────────────────────────
 
-    async function vote(postId, voteValue, btn) {
+    async function cardVote(voteValue) {
+      const post = cardBuffer[cardIndex];
+      if (!post) return;
       try {
-        const result = await apiRequest(`/api/posts/${postId}/vote`, 'POST', { vote: voteValue });
+        const result = await apiRequest(`/api/posts/${post.id}/vote`, 'POST', { vote: voteValue });
+        post.likes    = result.likes;
+        post.dislikes = result.dislikes;
+        post.my_vote  = result.my_vote;
 
-        // Обновляем счётчики на карточке
-        document.getElementById(`likes-${postId}`).textContent    = result.likes;
-        document.getElementById(`dislikes-${postId}`).textContent = result.dislikes;
+        document.getElementById('card-likes').textContent    = result.likes;
+        document.getElementById('card-dislikes').textContent = result.dislikes;
 
-        // Обновляем цвет кнопок
-        const likeBtn    = document.getElementById(`like-btn-${postId}`);
-        const dislikeBtn = document.getElementById(`dislike-btn-${postId}`);
-        likeBtn.className    = likeBtn.className.replace(/ liked| disliked/g, '');
-        dislikeBtn.className = dislikeBtn.className.replace(/ liked| disliked/g, '');
-
-        if (result.my_vote === 1)  likeBtn.classList.add('liked');
-        if (result.my_vote === -1) dislikeBtn.classList.add('disliked');
-
-        // Синхронизируем модалку если открыта
-        if (currentPostId === postId) {
-          document.getElementById('modal-likes').textContent    = result.likes;
-          document.getElementById('modal-dislikes').textContent = result.dislikes;
-          updateModalVoteBtns(result.my_vote);
-        }
+        const lb = document.getElementById('card-like-btn');
+        const db = document.getElementById('card-dislike-btn');
+        lb.className = lb.className.replace(/ liked| disliked/g, '');
+        db.className = db.className.replace(/ liked| disliked/g, '');
+        if (result.my_vote ===  1) lb.classList.add('liked');
+        if (result.my_vote === -1) db.classList.add('disliked');
 
         Telegram.WebApp.HapticFeedback.impactOccurred('light');
       } catch (e) {
@@ -456,13 +694,14 @@
     }
 
     // ──────────────────────────────────────────
-    // 5. МОДАЛКА НОВОГО ПОСТА
+    // 6. МОДАЛКА НОВОГО ПОСТА
     // ──────────────────────────────────────────
 
     function openNewPostModal() {
       document.getElementById('new-post-modal').classList.remove('hidden');
       document.getElementById('new-post-text').value = '';
-      document.getElementById('char-count').textContent = '0 / 1000';
+      document.getElementById('char-count').textContent = '0 / 10 000';
+      document.getElementById('char-hint').textContent  = '';
       setTimeout(() => document.getElementById('new-post-text').focus(), 100);
       Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
@@ -471,9 +710,12 @@
       document.getElementById('new-post-modal').classList.add('hidden');
     }
 
-    // Счётчик символов
     document.getElementById('new-post-text').addEventListener('input', function() {
-      document.getElementById('char-count').textContent = `${this.value.length} / 1000`;
+      const len  = this.value.length;
+      const max  = 10000;
+      const left = max - len;
+      document.getElementById('char-count').textContent = `${len.toLocaleString('ru')} / 10 000`;
+      document.getElementById('char-hint').textContent  = left < 500 ? `осталось ${left}` : '';
     });
 
     async function submitPost() {
@@ -481,84 +723,56 @@
       if (!text) return;
 
       const btn = document.getElementById('submit-post-btn');
-      btn.disabled = true;
+      btn.disabled    = true;
       btn.textContent = 'Публикую...';
 
       try {
-        const newPost = await apiRequest('/api/posts', 'POST', { content: text });
+        await apiRequest('/api/posts', 'POST', { content: text });
         closeNewPostModal();
-        await loadFeed();  // перезагружаем ленту
+        // Сбрасываем ленту чтобы новый пост попал первым
+        cardBuffer    = [];
+        cardIndex     = 0;
+        oldestId      = null;
+        isLoadingMore = false;
+        hasMore       = true;
+        await initFeed();
         Telegram.WebApp.HapticFeedback.notificationOccurred('success');
       } catch (e) {
         alert('Ошибка: ' + e.message);
       } finally {
-        btn.disabled = false;
+        btn.disabled    = false;
         btn.textContent = 'Опубликовать';
       }
     }
 
     // ──────────────────────────────────────────
-    // 6. МОДАЛКА ПРОСМОТРА ПОСТА
+    // 7. МОДАЛКА КОММЕНТАРИЕВ
     // ──────────────────────────────────────────
 
-    let currentPostId = null;
-
-    async function openPost(postId) {
-      currentPostId = postId;
-      const post = posts.find(p => p.id === postId);
+    function openComments() {
+      const post = cardBuffer[cardIndex];
       if (!post) return;
 
-      // Заполняем данные поста
-      document.getElementById('modal-content').textContent = post.content;
-      document.getElementById('modal-time').textContent    = timeAgo(post.created_at);
-      document.getElementById('modal-likes').textContent   = post.likes;
-      document.getElementById('modal-dislikes').textContent = post.dislikes;
+      document.getElementById('modal-post-preview').textContent = post.content;
       document.getElementById('comment-text').value = '';
-      updateModalVoteBtns(post.my_vote);
-
-      document.getElementById('post-modal').classList.remove('hidden');
+      document.getElementById('comments-modal').classList.remove('hidden');
+      loadComments(post.id);
       Telegram.WebApp.HapticFeedback.impactOccurred('light');
-
-      // Грузим комментарии
-      await loadComments(postId);
     }
 
-    function closePostModal() {
-      document.getElementById('post-modal').classList.add('hidden');
-      currentPostId = null;
+    function closeCommentsModal() {
+      document.getElementById('comments-modal').classList.add('hidden');
     }
-
-    function updateModalVoteBtns(myVote) {
-      const lb = document.getElementById('modal-like-btn');
-      const db = document.getElementById('modal-dislike-btn');
-      lb.className = lb.className.replace(/ liked| disliked/g, '');
-      db.className = db.className.replace(/ liked| disliked/g, '');
-      if (myVote === 1)  lb.classList.add('liked');
-      if (myVote === -1) db.classList.add('disliked');
-    }
-
-    async function voteInModal(voteValue) {
-      if (!currentPostId) return;
-      // Находим кнопку на карточке и имитируем клик
-      await vote(currentPostId, voteValue, null);
-    }
-
-    // ──────────────────────────────────────────
-    // 7. КОММЕНТАРИИ
-    // ──────────────────────────────────────────
 
     async function loadComments(postId) {
       const list = document.getElementById('comments-list');
       list.innerHTML = '<p class="text-tg-muted text-xs text-center font-body py-4">Загрузка...</p>';
-
       try {
         const comments = await apiRequest(`/api/posts/${postId}/comments`);
-
         if (comments.length === 0) {
           list.innerHTML = '<p class="text-tg-muted text-xs text-center font-body py-4">Комментариев пока нет. Будь первым!</p>';
           return;
         }
-
         list.innerHTML = comments.map(c => `
           <div class="bg-tg-card border border-tg-border rounded-xl p-3">
             <div class="flex justify-between items-center mb-1.5">
@@ -574,19 +788,16 @@
     }
 
     async function submitComment() {
-      if (!currentPostId) return;
+      const post = cardBuffer[cardIndex];
+      if (!post) return;
       const text = document.getElementById('comment-text').value.trim();
       if (!text) return;
-
       try {
-        await apiRequest(`/api/posts/${currentPostId}/comments`, 'POST', { content: text });
+        await apiRequest(`/api/posts/${post.id}/comments`, 'POST', { content: text });
         document.getElementById('comment-text').value = '';
-        await loadComments(currentPostId);
-
-        // Обновляем счётчик на карточке
-        const post = posts.find(p => p.id === currentPostId);
-        if (post) post.comments_count++;
-
+        post.comments_count++;
+        document.getElementById('card-comments').textContent = post.comments_count;
+        await loadComments(post.id);
         Telegram.WebApp.HapticFeedback.notificationOccurred('success');
       } catch (e) {
         alert('Ошибка: ' + e.message);
@@ -594,40 +805,79 @@
     }
 
     // ──────────────────────────────────────────
-    // 8. ИНДИКАТОР СТАТУСА
+    // 8. ПРОФИЛЬ
     // ──────────────────────────────────────────
 
-    function setStatus(online) {
-      const dot  = document.getElementById('status-dot');
-      const text = document.getElementById('status-text');
-      if (online) {
-        dot.className  = 'w-2 h-2 rounded-full bg-green-400';
-        text.textContent = 'В эфире';
-        text.className = 'text-xs text-green-400 font-body';
-      } else {
-        dot.className  = 'w-2 h-2 rounded-full bg-red-400';
-        text.textContent = 'Ошибка';
-        text.className = 'text-xs text-red-400 font-body';
+    let profileLoaded = false;
+
+    async function loadProfile() {
+      if (profileLoaded) return;
+
+      document.getElementById('profile-loader').classList.remove('hidden');
+      document.getElementById('profile-content').classList.add('hidden');
+
+      try {
+        const data = await apiRequest('/api/profile');
+        profileLoaded = true;
+
+        document.getElementById('stat-posts').textContent    = data.stats.total_posts;
+        document.getElementById('stat-likes').textContent    = data.stats.total_likes;
+        document.getElementById('stat-dislikes').textContent = data.stats.total_dislikes;
+        document.getElementById('stat-comments').textContent = data.stats.total_comments;
+
+        const container = document.getElementById('profile-posts');
+        const emptyEl   = document.getElementById('profile-empty');
+
+        if (data.posts.length === 0) {
+          emptyEl.classList.remove('hidden');
+        } else {
+          container.innerHTML = data.posts.map((p, i) => renderProfileCard(p, i)).join('');
+        }
+
+        document.getElementById('profile-loader').classList.add('hidden');
+        document.getElementById('profile-content').classList.remove('hidden');
+
+      } catch (e) {
+        document.getElementById('profile-loader').innerHTML =
+          `<p class="text-tg-muted text-sm font-body text-center">Ошибка: ${escapeHtml(e.message)}</p>`;
       }
     }
 
+    function renderProfileCard(p, i) {
+      const delay = Math.min(i * 50, 300);
+      return `
+        <div class="profile-card relative bg-tg-card border border-tg-border rounded-2xl p-4 anim-up"
+             style="animation-delay:${delay}ms; padding-left: 18px;">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-tg-accent text-xs font-body font-semibold">Аноним 🤫</span>
+            <span class="text-tg-muted text-xs font-body">${timeAgo(p.created_at)}</span>
+          </div>
+          <p class="text-tg-text text-sm font-body leading-relaxed mb-3 line-clamp-4">${escapeHtml(p.content)}</p>
+          <div class="flex items-center gap-3 text-xs font-body text-tg-muted">
+            <span class="flex items-center gap-1" style="color:#7b6dff">👍 ${p.likes}</span>
+            <span class="flex items-center gap-1" style="color:#ff6b9d">👎 ${p.dislikes}</span>
+            <span class="flex items-center gap-1">💬 ${p.comments_count}</span>
+          </div>
+        </div>
+      `;
+    }
+
     // ──────────────────────────────────────────
-    // 9. ЗАКРЫТИЕ МОДАЛОК ПО КЛИКУ НА ФОНЕ
+    // 9. ЗАКРЫТИЕ МОДАЛОК
     // ──────────────────────────────────────────
 
     document.getElementById('new-post-modal').addEventListener('click', function(e) {
       if (e.target === this) closeNewPostModal();
     });
-
-    document.getElementById('post-modal').addEventListener('click', function(e) {
-      if (e.target === this) closePostModal();
+    document.getElementById('comments-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeCommentsModal();
     });
 
     // ──────────────────────────────────────────
-    // 10. СТАРТ ПРИЛОЖЕНИЯ
+    // 10. СТАРТ
     // ──────────────────────────────────────────
 
-    loadFeed();
+    initFeed();
   </script>
 
 </body>
