@@ -30,8 +30,8 @@ from pydantic import BaseModel
 #   WEBAPP_URL=https://твой-домен.com
 load_dotenv()
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "http://localhost:8000")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8736697506:AAGGiy-dtt1G4DLAgxiwwFZLY7u8MmSM9pY")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://secret-production-d8f0.up.railway.app")
 DB_PATH = "secrets.db"
 
 # ── Логирование — чтобы видеть что происходит в консоли ────
