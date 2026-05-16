@@ -15,6 +15,7 @@ from urllib.parse import parse_qsl, unquote
 import aiosqlite
 import aiofiles
 from aiogram import Bot, Dispatcher, types
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from dotenv import load_dotenv
@@ -189,10 +190,20 @@ async def lifespan(app: FastAPI):
     # и дропает /start-команды → пользователи не запускают бота →
     # bot.send_message() падает с 403 Forbidden → уведомления не приходят.
     webhook_url = f"{WEBAPP_URL}/webhook"
-    await bot.set_webhook(webhook_url, drop_pending_updates=True)
-    logger.info(f"Webhook установлен: {webhook_url} ✅")
+    # При WORKERS > 1 все воркеры стартуют одновременно и одновременно
+    # вызывают set_webhook. Telegram разрешает один вызов раз в несколько
+    # секунд и отвечает 429 тем, кто опоздал. Это нормально — webhook
+    # уже установлен первым воркером, остальные просто пропускают.
+    try:
+        await bot.set_webhook(webhook_url, drop_pending_updates=True)
+        logger.info(f"Webhook установлен: {webhook_url} ✅")
+    except TelegramRetryAfter:
+        logger.info("Webhook уже установлен другим воркером — пропускаем ✅")
     yield
-    await bot.delete_webhook()
+    try:
+        await bot.delete_webhook()
+    except Exception:
+        pass  # другие воркеры уже удалили webhook
     await bot.session.close()
     logger.info("Бот остановлен")
 
